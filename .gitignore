@@ -1,0 +1,16 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+bin/
+.DS_Store
+/testCase/obj
+*.feature.cs
+/testCase/.vs

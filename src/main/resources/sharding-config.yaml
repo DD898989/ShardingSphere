@@ -1,0 +1,158 @@
+databaseName: sharding_db
+
+mode:
+  type: Standalone
+  repository:
+    type: JDBC
+    props:
+      provider: MySQL
+      jdbc_url: jdbc:mysql://mysql:3306/ss_metadata?createDatabaseIfNotExist=true
+      username: root
+      password: ""
+
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:mysql://mysql:3306/ds_0?createDatabaseIfNotExist=true
+    username: root
+    password: ""
+  ds_1:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:mysql://mysql:3306/ds_1?createDatabaseIfNotExist=true
+    username: root
+    password: ""
+  ds_2025:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:mysql://mysql:3306/ds_2025?createDatabaseIfNotExist=true
+    username: root
+    password: ""
+  ds_2026:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:mysql://mysql:3306/ds_2026?createDatabaseIfNotExist=true
+    username: root
+    password: ""
+  ds_mydefault:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:mysql://mysql:3306/ds_mydefault?createDatabaseIfNotExist=true
+    username: root
+    password: ""
+
+rules:
+  - !SHARDING
+    tables:
+      order:
+        actualDataNodes: ds_$->{0..1}.order_$->{0..1}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_inline
+        tableStrategy:
+          standard:
+            shardingColumn: order_id
+            shardingAlgorithmName: tbl_inline_order
+      order_item:
+        actualDataNodes: ds_$->{0..1}.order_item_$->{0..1}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_inline
+        tableStrategy:
+          standard:
+            shardingColumn: order_id
+            shardingAlgorithmName: tbl_inline_order_item
+      time_record:
+        actualDataNodes: ds_2025.time_record_2025$->{['01','02','03','04','05','06','07','08','09','10','11','12']},ds_2026.time_record_2026$->{['01','02','03','04','05','06','07','08','09','10','11','12']}
+        databaseStrategy:
+          standard:
+            shardingColumn: my_time
+            shardingAlgorithmName: db_interval_yearly
+        tableStrategy:
+          standard:
+            shardingColumn: my_time
+            shardingAlgorithmName: tbl_interval_monthly
+      article:
+        actualDataNodes: ds_$->{0..1}.article_$->{0..1}
+        databaseStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: db_inline
+        tableStrategy:
+          standard:
+            shardingColumn: article_id
+            shardingAlgorithmName: tbl_inline_article
+      article_content:
+        actualDataNodes: ds_$->{0..1}.article_content_$->{0..1}
+        databaseStrategy:
+          standard:
+            shardingColumn: content_user_id
+            shardingAlgorithmName: db_inline_article_content
+        tableStrategy:
+          standard:
+            shardingColumn: article_id
+            shardingAlgorithmName: tbl_inline_article_content
+      my_snowflake:
+        actualDataNodes: ds_mydefault.my_snowflake
+        keyGenerateStrategy:
+          column: id
+          keyGeneratorName: snowflake_generator
+
+    bindingTables:
+      - order, order_item
+      - article, article_content
+
+    shardingAlgorithms:
+      db_inline:
+        type: INLINE
+        props:
+          algorithm-expression: ds_$->{user_id % 2}
+      db_inline_article_content:
+        type: INLINE
+        props:
+          algorithm-expression: ds_$->{content_user_id % 2}
+      tbl_inline_order:
+        type: INLINE
+        props:
+          algorithm-expression: order_$->{order_id % 2}
+      tbl_inline_order_item:
+        type: INLINE
+        props:
+          algorithm-expression: order_item_$->{order_id % 2}
+      db_interval_yearly:
+        type: INTERVAL
+        props:
+          datetime-pattern: "yyyy-MM-dd HH:mm:ss"
+          datetime-lower: "2025-01-01 00:00:00"
+          datetime-upper: "2026-12-31 23:59:59"
+          sharding-suffix-pattern: "yyyy"
+          datetime-interval-amount: 1
+          datetime-interval-unit: "YEARS"
+      tbl_interval_monthly:
+        type: INTERVAL
+        props:
+          datetime-pattern: "yyyy-MM-dd HH:mm:ss"
+          datetime-lower: "2025-01-01 00:00:00"
+          datetime-upper: "2026-12-31 23:59:59"
+          sharding-suffix-pattern: "yyyyMM"
+          datetime-interval-amount: 1
+          datetime-interval-unit: "MONTHS"
+      tbl_inline_article:
+        type: INLINE
+        props:
+          algorithm-expression: article_$->{article_id % 2}
+      tbl_inline_article_content:
+        type: INLINE
+        props:
+          algorithm-expression: article_content_$->{article_id % 2}
+
+    keyGenerators:
+      snowflake_generator:
+        type: SNOWFLAKE
+
+  - !SINGLE
+    tables:
+      - "*.*"
+    defaultDataSource: ds_mydefault
+
+  - !BROADCAST
+    tables:
+      - country
